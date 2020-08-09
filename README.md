@@ -99,6 +99,21 @@ This is how our data looks like inside `es-invoices` elasticsearch index :
   "country_location": "31.791702,-7.09262"
 }
 ```
+You can use this `update_by_query` to compute the total ammount per order as it's not calculated in the original dataset
+
+```json
+POST es-invoices/_update_by_query?refresh=false&wait_for_completion=false
+{
+  "script": {
+    "source": "ctx._source['revenue'] = ctx._source['unit_price'] * ctx._source['order_qty']"
+  }
+}
+```
+Then use [Task API](https://www.elastic.co/guide/en/elasticsearch/reference/current/tasks.html) to track the progress of your query
+
+```
+GET /_tasks
+```
 
 We have all the crucial information we need:
 
@@ -219,6 +234,188 @@ We will be showing examples for monthly retention rate and cohort based retentio
 
 First we should define what is a new customer. In our dataset, we can assume a new customer is whoever did his/her first purchase in the time window we defined. We will do it monthly for this example.
 
-We will be using .min() function to find our first purchase date for each customer and define new customers based on that.
+We will be using a new `tranform`  to find our first purchase date for each customer and define new customers based on that, then an `enrich policy` can be used to update our dataset
 
 The code below will apply this function and show us the revenue breakdown for each group monthly.
+
+Here is the tranform that find our first purchase date for each customer and other metrics.
+
+```json
+{
+  "id": "es-invoices-customers",
+  "source": {
+    "index": ["es-invoices"],
+    "query": {
+      "match_all": {}
+    }
+  },
+  "dest": {
+    "index": "es-invoices-customers"
+  },
+  "pivot": {
+    "group_by": {
+      "customer_id": {
+        "terms": {
+          "field": "customer_id"
+        }
+      }
+    },
+    "aggregations": {
+      "avg_revenue": {
+        "avg": {
+          "field": "revenue"
+        }
+      },
+      "total_revenue": {
+        "sum": {
+          "field": "revenue"
+        }
+      },
+      "first_invoice": {
+        "min": {
+          "field": "invoice_date"
+        }
+      },
+      "last_invoice": {
+        "max": {
+          "field": "invoice_date"
+        }
+      },
+      "count_orders": {
+        "value_count": {
+          "field": "invoice_id"
+        }
+      },
+      "quantity": {
+        "sum": {
+          "field": "order_qty"
+        }
+      }
+    }
+  }
+}
+```
+
+Now let's define an enrich poilicy that will be used to update the original index `es-invoices` with the customer first sales date from the new index `es-invoices-customers`
+
+```json
+# Enrichment policy for customer first sales date
+PUT /_enrich/policy/customer_first_order_date
+{
+  "match": {
+    "indices": "es-invoices-customers",
+    "match_field": "customer_id",
+    "enrich_fields": [
+      "first_invoice"
+    ]
+  }
+}
+```
+
+```
+# Execute the policy so we can populate with the first sales date
+POST /_enrich/policy/customer_first_order/_execute
+```
+
+```json
+# Our enrichment pipeline for adding first sales date
+PUT _ingest/pipeline/customer_first_order_date
+{
+  "description": "Adds customer first sales order date by customer_id",
+  "processors": [
+    {
+      "enrich": {
+        "policy_name": "customer_first_order_date",
+        "field": "customer_id",
+        "target_field": "enrich", 
+        "max_matches": 1
+      }
+    },
+    {
+      "rename": {
+        "field": "enrich.first_invoice",
+        "target_field": "first_invoice",
+        "ignore_failure": true
+      }
+    },
+    {
+      "remove": {
+        "field": "enrich",
+        "ignore_failure": true
+      }
+    }
+  ]
+}
+```
+Eveything is in place, all we need is to update our dataset
+
+```json
+POST es-invoices/_update_by_query?pipeline=customer_first_order_date&wait_for_completion=false
+{
+  "query": {
+    "match_all": {}
+  }
+}
+```
+
+Then we need a second update to diffrentiate existing customer from new one's
+
+```json
+POST es-invoices/_update_by_query?wait_for_completion=false
+{
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "exists": {
+            "field": "first_invoice"
+          }
+        }
+      ]
+    }
+  },"script": {
+    "source": """
+    long invoice_date = new SimpleDateFormat("yyyy-MM-dd'T'hh:mm:ss").parse(ctx._source['invoice_date']).getTime();
+    
+    long first_invoice = new SimpleDateFormat("yyyy-MM-dd'T'hh:mm:ss").parse(ctx._source['first_invoice']).getTime();
+    
+    
+    
+    if ( invoice_date > first_invoice ) {ctx._source['customer_type'] = 'Existing Customer'} else { ctx._source['customer_type'] = 'New Customer'}
+    
+    """,
+    "lang": "painless"
+  }
+}
+```
+
+The final reuslt of our dataset should looks like this
+
+```json
+{
+  "customer_type": "Existing Customer",
+  "item_id": "35430608",
+  "country_location": "31.791702,-7.09262",
+  "item_name": "Samsung SM-G610F/DD",
+  "order_qty": 16,
+  "unit_price": 14.5,
+  "item_brand": "Samsung",
+  "invoice_date": "2019-07-21T12:25:00.000Z",
+  "first_invoice": "2018-12-14T12:59:00.000Z",
+  "item_model": "SM-G610F/DD",
+  "revenue": 232,
+  "item_vendor": "Samsung Korea",
+  "country_name": "Morocco",
+  "invoice_id": "560841",
+  "customer_id": "14298"
+}
+```
+<img src="./screens/new_vs_existing_customers_revenue.png" align="middle">
+
+Existing customers are showing a positive trend and tell us that our customer base is growing but new customers have a slight negative trend.
+
+Let’s have a better view by looking at the New Customer Ratio :
+
+<img src="./screens/new_customers_ratio.png" align="middle">
+
+New Customer Ratio has declined as expected (we assumed on Feb, all customers were New) and running around 20%.
