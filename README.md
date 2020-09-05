@@ -314,7 +314,7 @@ PUT /_enrich/policy/customer_first_order_date
 
 ```
 # Execute the policy so we can populate with the first sales date
-POST /_enrich/policy/customer_first_order/_execute
+POST /_enrich/policy/customer_first_order_date/_execute
 ```
 
 ```json
@@ -419,3 +419,12 @@ Let’s have a better view by looking at the New Customer Ratio :
 <img src="./screens/new_customers_ratio.png" align="middle">
 
 New Customer Ratio has declined as expected (we assumed on Feb, all customers were New) and running around 20%.
+
+## Monthly Retention Rate
+
+Retention rate should be monitored very closely because it indicates how sticky is your service and how well your product fits the market. For making Monthly Retention Rate visualized, we need to calculate how many customers retained from previous month.
+
+<img src="./screens/client_retention_TSVB.png" align="middle">
+
+
+> **Monthly Retention Rate** = Retained Customers From Prev. Month/Active Customers Total
