@@ -690,4 +690,4 @@ To get the cohort period we need to create a new scripted field. Go to Stack Man
 (doc['invoice_date'].value.toInstant().toEpochMilli() - doc['first_invoice'].value.toInstant().toEpochMilli()) / 86400000
 ```
 Therefore we got our cohort visualization :
-<img src="./screens/customer_retention_cohort.png" align="middle">
+<img src="./screens/customer_retention_ratio_cohort.png" align="middle">
