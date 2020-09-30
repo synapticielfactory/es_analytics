@@ -490,14 +490,14 @@ Therefore, we used cardinality aggregation as costumer activity indicator and re
 Then, we create a new Vega visualization form Kibana where we will use our aggregation. Vega visualization takes as configuration a json script that is in the right. 
 
 The general structure of the config is as follows :
- ```json
+ ```
  {
   "$schema": "https://vega.github.io/schema/vega-lite/v2.json",
   "title": "Event counts from all indexes",
   "data": [{...}, ...],
   "scales": [{...}, ...],
-  "axes": [{...}, ...]
-  "marks": [{...}, ...],
+  "axes": [{...}, ...],
+  "marks": [{...}, ...]
 }
 ```
 This config is made up of 4 mainly attributes :
@@ -507,7 +507,7 @@ This config is made up of 4 mainly attributes :
  - **marks** are graphic visual that encodes data using geometric primitives such as rectangles, lines, and plotting symbols.
 
 Now we will take advantage of the Vega's transform feature extension to get retention of all users, active users and then Retention Rate. To do so, we just need to define the transformation **retention_data** for our aggregation **es_data** in **data** section :
- ```json
+ ```Hjson
   data: [
     {
       name: index
@@ -612,7 +612,7 @@ Now we will take advantage of the Vega's transform feature extension to get rete
   ]
 ```
 Also, we need visual configuration that can be set as below: 
- ```json
+ ```Hjson
   scales: [
     {
       name: x
