@@ -1,3 +1,4 @@
+
 # Learn what and how to track with Python (Eland) and Elasticsearch
 
 > This series of article was inspired from [Barış Karaman](https://towardsdatascience.com/@karamanbk), and the objectif is to adapt the content to the context of Elasticsearch.
@@ -136,7 +137,7 @@ For this purpose we will use [Tranform](https://www.elastic.co/guide/en/elastics
 This is an example of tranform used to summarize the data and get the DataFrame required for our Monthly analysis
 
 ```json
-{
+PUT _transform/es-invoices-summary{
   "id": "es-invoices-summary",
   "source": {
     "index": ["es-invoices"],
@@ -238,9 +239,10 @@ We will be using a new `tranform`  to find our first purchase date for each cust
 
 The code below will apply this function and show us the revenue breakdown for each group monthly.
 
-Here is the tranform that find our first purchase date for each customer and other metrics.
+Here is the transform that find our first purchase date for each customer and other metrics.
 
 ```json
+PUT _transform/es-invoices-customers
 {
   "id": "es-invoices-customers",
   "source": {
@@ -295,6 +297,10 @@ Here is the tranform that find our first purchase date for each customer and oth
   }
 }
 ```
+```
+# start the transformation so we can use them later
+POST _transform/es-invoices-customers/_start
+```
 
 Now let's define an enrich poilicy that will be used to update the original index `es-invoices` with the customer first sales date from the new index `es-invoices-customers`
 
@@ -347,7 +353,7 @@ PUT _ingest/pipeline/customer_first_order_date
   ]
 }
 ```
-Eveything is in place, all we need is to update our dataset
+Everything is in place, all we need is to update our dataset
 
 ```json
 POST es-invoices/_update_by_query?pipeline=customer_first_order_date&wait_for_completion=false
@@ -358,7 +364,7 @@ POST es-invoices/_update_by_query?pipeline=customer_first_order_date&wait_for_co
 }
 ```
 
-Then we need a second update to diffrentiate existing customer from new one's
+Then we need a second update to differentiate existing customer from new one's
 
 ```json
 POST es-invoices/_update_by_query?wait_for_completion=false
@@ -389,8 +395,7 @@ POST es-invoices/_update_by_query?wait_for_completion=false
 }
 ```
 
-The final reuslt of our dataset should looks like this
-
+The final result of our dataset should looks like this
 ```json
 {
   "customer_type": "Existing Customer",
@@ -424,7 +429,265 @@ New Customer Ratio has declined as expected (we assumed on Feb, all customers we
 
 Retention rate should be monitored very closely because it indicates how sticky is your service and how well your product fits the market. For making Monthly Retention Rate visualized, we need to calculate how many customers retained from previous month.
 
-<img src="./screens/client_retention_TSVB.png" align="middle">
-
-
 > **Monthly Retention Rate** = Retained Customers From Prev. Month/Active Customers Total
+
+For this task, we will take advantage of the strength of Vega extension in Kibana.
+
+Vega is a tool that allows to build custom visualizations backed by one or multiple data sources. one of it's main features, is the ability to process data (using transforms) just before visualizing it.
+<img src="./screens/customer_retention_VEGA.png" align="middle">
+
+First, we will create aggregation that shows monthly retention of each costumer as the following : 
+```json
+GET es-invoices/_search
+{
+  "query": {
+    "match_all": {}
+  },
+  "aggs": {
+  "customer": {
+    "terms": {
+      "field": "customer_id",
+      "size" : 9999
+    },
+    "aggs": {
+      "hist": {
+        "date_histogram": {
+          "field": "invoice_date",
+          "calendar_interval": "1M",
+          "min_doc_count": 0
+        },
+        "aggs": {
+          "card": {
+            "cardinality": {
+              "field": "customer_id"
+            }
+          },
+          "derv": {
+            "derivative": {
+              "buckets_path": "card",
+              "gap_policy": "insert_zeros"
+            }
+          },
+          "retention": {
+            "bucket_script": {
+              "buckets_path": {
+                "derv": "derv",
+                "card": "card"
+              },
+              "script": "if(params.derv == 0 && params.card == 1) { return 1 } else { return 0 }",
+              "gap_policy": "insert_zeros"
+            }
+          }
+        }
+      }
+    }
+  }
+}
+}
+```
+Therefore, we used cardinality aggregation as costumer activity indicator and relied on derivative aggregation to measure retention of a costumer for each month.
+
+Then, we create a new Vega visualization form Kibana where we will use our aggregation. Vega visualization takes as configuration a json script that is in the right. 
+
+The general structure of the config is as follows :
+ ```json
+ {
+  "$schema": "https://vega.github.io/schema/vega-lite/v2.json",
+  "title": "Event counts from all indexes",
+  "data": [{...}, ...],
+  "scales": [{...}, ...],
+  "axes": [{...}, ...]
+  "marks": [{...}, ...],
+}
+```
+This config is made up of 4 mainly attributes :
+ - **data** set definitions and transforms define the data to load and how to process it.
+ - **scales** map data values (numbers, dates, categories, _etc._) to visual values (pixels, colors, sizes).
+ - **axes** visualize spatial [scale](https://vega.github.io/vega/docs/scales) mappings using ticks, grid lines and labels.
+ - **marks** are graphic visual that encodes data using geometric primitives such as rectangles, lines, and plotting symbols.
+
+Now we will take advantage of the Vega's transform feature extension to get retention of all users, active users and then Retention Rate. To do so, we just need to define the transformation **retention_data** for our aggregation **es_data** in **data** section :
+ ```json
+  data: [
+    {
+      name: index
+      url: {
+        %context%: true
+        %timefield%: invoice_date
+        index: es-invoices
+        body: {
+          size: 0
+          aggs: {
+            customer: {
+              terms: {
+                field: customer_id
+                size: 5000
+              }
+              aggs: {
+                time_buckets: {
+                  date_histogram: {
+                    field: invoice_date
+                    calendar_interval: "1M"
+                    extended_bounds: {
+                      min: {
+                        %timefilter%: min
+                      }
+                      max: {
+                        %timefilter%: max
+                      }
+                    }
+                    min_doc_count: 0
+                  }
+                  aggs: {
+                    card: {
+                      cardinality: {
+                        field: customer_id
+                      }
+                    }
+                    derv: {
+                      derivative: {
+                        buckets_path: card
+                        gap_policy: insert_zeros
+                      }
+                    }
+                    retention: {
+                      bucket_script: {
+                        buckets_path: {
+                          derv: derv
+                          card: card
+                        }
+                        script: if(params.derv == 0 && params.card == 1) { return 1 } else { return 0 }
+                        gap_policy: insert_zeros
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+      format: {
+        property: aggregations.customer.buckets
+      }
+    }
+    {
+      name: retention_data
+      source: index
+      transform: [
+        {
+          type: flatten
+          fields: [
+            time_buckets.buckets
+          ]
+          as: [
+            histogram
+          ]
+        }
+        {
+          type: aggregate
+          fields: [
+            histogram.retention.value
+            histogram.card.value
+          ]
+          ops: [
+            sum
+            sum
+          ]
+          as: [
+            user_retention
+            user_count
+          ]
+          groupby: [
+            histogram.key
+          ]
+        }
+        {
+          type: formula
+          as: retention_ratio
+          expr: datum.user_retention*100/datum.user_count
+        }
+      ]
+    }
+  ]
+```
+Also, we need visual configuration that can be set as below: 
+ ```json
+  scales: [
+    {
+      name: x
+      type: time
+      range: width
+      domain: {
+        data: retention_data
+        field: histogram\.key
+      }
+      nice: {"interval": "day", "step": 1}
+    }
+    {
+      name: y
+      type: linear
+      range: height
+      nice: true
+      zero: true
+      domain: {
+        data: retention_data
+        field: retention_ratio
+      }
+    }
+  ]
+  axes: [
+    {
+      orient: bottom
+      scale: x
+    }
+    {
+      orient: left
+      scale: y
+    }
+  ]
+  marks: [
+    {
+      type: line
+      from: {
+        data: retention_data
+      }
+      encode: {
+        enter: {
+          x: {
+            scale: x
+            type: temporal
+            field: histogram\.key
+          }
+          y: {
+            scale: y
+            type: quantitive
+            field: retention_ratio
+          }
+          stroke: {
+            value: "#00f"
+          }
+        }
+      }
+    }
+  ]
+```
+In the end, we have our Retention Rate & line chart like below:
+<img src="./screens/customer_retention_ratio_VEGA.png" align="middle">
+## Cohort Based Retention Rate
+There is another way of measuring Retention Rate which allows you to see Retention Rate for each cohort. Cohorts are determined as first purchase year-month of the customers. We will be measuring what percentage of the customers retained after their first purchase in each month. This view will help us to see how recent and old cohorts differ regarding retention rate and if recent changes in customer experience affected new customer’s retention or not.
+
+This can be done using the cohort visualization.
+It's can be accessed in Kibana>visualize>cohort.
+Its configuration requires 3 aggregations :
+ - cohort metric
+ - cohort date
+ - cohort period
+
+Following our study, our metric would be the sum of active customers. while cohort date would be their first purchase.
+To get the cohort period we need to create a new scripted field. Go to Stack Management>Index patterns>"es-invoices" and create a new scripted field with the following source: 
+```json
+(doc['invoice_date'].value.toInstant().toEpochMilli() - doc['first_invoice'].value.toInstant().toEpochMilli()) / 86400000
+```
+Therefore we got our cohort visualization :
+<img src="./screens/customer_retention_cohort.png" align="middle">
