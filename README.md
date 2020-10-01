@@ -684,6 +684,7 @@ In order to config Cohort visualisation we need to provide 3 aggregations :
  - cohort metric
  - cohort date
  - cohort period
+
 Following our study, our metric would be the sum of active customers. while cohort date would be their first purchase.
 To get the cohort period we need to create a new scripted field. Go to Stack Management>Index patterns>"es-invoices" and create a new scripted field with the following source: 
 ```json
