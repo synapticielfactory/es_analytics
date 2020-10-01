@@ -433,7 +433,7 @@ Retention rate should be monitored very closely because it indicates how sticky 
 
 For this task, we will take advantage of the strength of Vega extension in Kibana.
 
-Vega is a tool that allows to build custom visualizations backed by one or multiple data sources. one of it's main features, is the ability to process data (using transforms) just before visualizing it.
+Vega is a tool that allows to build custom visualizations backed by one or multiple data sources. One of it's main features, it offers a collection of transformations tools which enables processing input data just before visualization.
 <img src="./screens/customer_retention_VEGA.png" align="middle">
 
 First, we will create aggregation that shows monthly retention of each costumer as the following : 
@@ -487,9 +487,7 @@ GET es-invoices/_search
 ```
 Therefore, we used cardinality aggregation as costumer activity indicator and relied on derivative aggregation to measure retention of a costumer for each month.
 
-Then, we create a new Vega visualization form Kibana where we will use our aggregation. Vega visualization takes as configuration a json script that is in the right. 
-
-The general structure of the config is as follows :
+Then, we create a new Vega visualization form Kibana where we will use our aggregation. Vega visualization takes as configuration a json script that is in the right. The general structure of the config is as follows :
  ```
  {
   "$schema": "https://vega.github.io/schema/vega-lite/v2.json",
@@ -506,11 +504,11 @@ This config is made up of 4 mainly attributes :
  - **axes** visualize spatial [scale](https://vega.github.io/vega/docs/scales) mappings using ticks, grid lines and labels.
  - **marks** are graphic visual that encodes data using geometric primitives such as rectangles, lines, and plotting symbols.
 
-Now we will take advantage of the Vega's transform feature extension to get retention of all users, active users and then Retention Rate. To do so, we just need to define the transformation **retention_data** for our aggregation **es_data** in **data** section :
+Now we will take advantage of the Vega's transform feature extension to get retention of all users, active users and then Retention Rate. To do so, we just need to define our transformation **retention_data** for the earlier aggregation **es_data** in **data** section :
  ```Hjson
   data: [
     {
-      name: index
+      name: es_data
       url: {
         %context%: true
         %timefield%: invoice_date
@@ -611,7 +609,8 @@ Now we will take advantage of the Vega's transform feature extension to get rete
     }
   ]
 ```
-Also, we need visual configuration that can be set as below: 
+
+Also, we need a visual configuration that can be set as below: 
  ```Hjson
   scales: [
     {
@@ -672,18 +671,19 @@ Also, we need visual configuration that can be set as below:
     }
   ]
 ```
+
 In the end, we have our Retention Rate & line chart like below:
 <img src="./screens/customer_retention_ratio_VEGA.png" align="middle">
+
 ## Cohort Based Retention Rate
 There is another way of measuring Retention Rate which allows you to see Retention Rate for each cohort. Cohorts are determined as first purchase year-month of the customers. We will be measuring what percentage of the customers retained after their first purchase in each month. This view will help us to see how recent and old cohorts differ regarding retention rate and if recent changes in customer experience affected new customer’s retention or not.
 
-This can be done using the cohort visualization.
-It's can be accessed in Kibana>visualize>cohort.
-Its configuration requires 3 aggregations :
+For this aim, we have used our cohort visualization plugin that can be found in the following repository [kibana_cohor](https://github.com/synapticielfactory/kibana_cohort).
+
+Once installed, we can find it amoung other visualisations in Kibana>visualize>cohort. Its configuration requires 3 aggregations :
  - cohort metric
  - cohort date
  - cohort period
-
 Following our study, our metric would be the sum of active customers. while cohort date would be their first purchase.
 To get the cohort period we need to create a new scripted field. Go to Stack Management>Index patterns>"es-invoices" and create a new scripted field with the following source: 
 ```json
