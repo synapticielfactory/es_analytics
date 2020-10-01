@@ -678,9 +678,9 @@ In the end, we have our Retention Rate & line chart like below:
 ## Cohort Based Retention Rate
 There is another way of measuring Retention Rate which allows you to see Retention Rate for each cohort. Cohorts are determined as first purchase year-month of the customers. We will be measuring what percentage of the customers retained after their first purchase in each month. This view will help us to see how recent and old cohorts differ regarding retention rate and if recent changes in customer experience affected new customer’s retention or not.
 
-For this aim, we have used our cohort visualization plugin that can be found in the following repository [kibana_cohor](https://github.com/synapticielfactory/kibana_cohort).
+For this aim, we have used our cohort visualization plugin that can be found in the following repository [kibana_cohor](https://github.com/synapticielfactory/kibana_cohort). Once installed, we can find it amoung other visualisations in Kibana>visualize>cohort.
 
-Once installed, we can find it amoung other visualisations in Kibana>visualize>cohort. Its configuration requires 3 aggregations :
+In order to config Cohort visualisation we need to provide 3 aggregations :
  - cohort metric
  - cohort date
  - cohort period
