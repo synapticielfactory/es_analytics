@@ -617,7 +617,7 @@ We can easily apply this naming in Vega visualization:
     }
   ]
 }
-```python
+```
 
 Now, it is the best part. Let’s see how our segments distributed on a scatter plot:
 
