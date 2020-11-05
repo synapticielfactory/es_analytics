@@ -359,7 +359,7 @@ plt.show()
 
 Inertia graph:
 
-![Image for post](./src/recency_inertia.png)
+![Image for post](./src-2/recency_inertia.png)
 
 Here it looks like 3 is the optimal one. Based on business requirements, we can go ahead with less or more clusters. We will be selecting 4 for this example:
 
@@ -371,7 +371,7 @@ kmeans.fit(ed_recency)
 ed_users['RecencyCluster'] = kmeans.predict(ed_recency)
 ed_users.groupby('RecencyCluster')['recency'].describe()
 ```
-![Image for post](./src/recency_cluster_describe.png)
+![Image for post](./src-2/recency_cluster_describe.png)
 
 We can see how our recency clusters have different characteristics. The customers in Cluster 1 are very recent compared to Cluster 2.
 
@@ -392,7 +392,7 @@ ed_users.groupby('RecencyCluster')['recency'].describe()
 ```
 We have added one function to our code which is  **order_cluster()**. K-means assigns clusters as numbers but not in an ordered way. We can’t say cluster 0 is the worst and cluster 4 is the best. order_cluster() method does this for us and our new dataframe looks much neater:
 
-![Image for post](./src/recency_cluster_describe_order.png)
+![Image for post](./src-2/recency_cluster_describe_order.png)
 
 Great! 3 covers most recent customers whereas 0 has the most inactive ones.
 
@@ -402,13 +402,13 @@ Let’s apply same for Frequency and Revenue.
 
 To create frequency clusters, we need to find total number orders for each customer. First calculate this and see how frequency look like in our customer database:
 
-![Image for post](./src/frequency_histogram.png)
+![Image for post](./src-2/frequency_histogram.png)
 
 Apply the same logic for having frequency clusters and assign this to each customer:
 
 Characteristics of our frequency clusters look like below:
 
-![Image for post](./src/frequency_cluster_describe.png)
+![Image for post](./src-2/frequency_cluster_describe.png)
 
 As the same notation as recency clusters, high frequency number indicates better customers.
 
@@ -416,11 +416,11 @@ As the same notation as recency clusters, high frequency number indicates better
 
 Let’s see how our customer database looks like when we cluster them based on revenue. We will calculate revenue for each customer, plot a histogram and apply the same clustering method.
 
-![Image for post](./src/revenue_histogram.png)
+![Image for post](./src-2/revenue_histogram.png)
 
 We have some customers with negative revenue as well. Let’s continue and apply k-means clustering:
 
-![Image for post](./src/revenue_cluster_describe.png)
+![Image for post](./src-2/revenue_cluster_describe.png)
 
 ## Overall Score
 
@@ -440,7 +440,7 @@ edd = ed.pandas_to_eland(ett,es,"es-customers-clusters")
 edd
 ```
 
-![Image for post](./src/overall_score_describe.png)
+![Image for post](./src-2/overall_score_describe.png)
 
 The scoring above clearly shows us that customers with score 8 is our best customers whereas 0 is the worst.
 
@@ -621,11 +621,11 @@ We can easily apply this naming in Vega visualization:
 
 Now, it is the best part. Let’s see how our segments distributed on a scatter plot:
 
-![Image for post](./src/frequency_recency_scatter.png)
+![Image for post](./src-2/frequency_recency_scatter.png)
 
-![Image for post](./src/revenu_frequency_scatter.png)
+![Image for post](./src-2/revenu_frequency_scatter.png)
 
-![Image for post](./src/revenu_recency_scatter.png)
+![Image for post](./src-2/revenu_recency_scatter.png)
 
 You can see how the segments are clearly differentiated from each other in terms of RFM. You can find the code snippets for graphs below:
 
