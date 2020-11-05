@@ -524,7 +524,7 @@ We can easily apply this naming in Vega visualization:
       ]
     },
         {
-      "name": "clusters",
+      "name": "clusters_labels",
       "values": [
         {"id": 1, "name": "Low value"},
         {"id": 2, "name": "Medium value"},
@@ -550,8 +550,8 @@ We can easily apply this naming in Vega visualization:
     {
       "name": "label",
       "type": "ordinal",
-      "domain": {"data": "clusters", "field": "id"},
-      "range": {"data": "clusters", "field": "name"}
+      "domain": {"data": "clusters_labels", "field": "id"},
+      "range": {"data": "clusters_labels", "field": "name"}
     },
         {
       "name": "color",
