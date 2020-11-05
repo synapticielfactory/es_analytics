@@ -299,7 +299,7 @@ GET es-invoices-customers/_search
 We see that even though the average is 72 day recency, median is 37.
 We can quickly make a histogram  to see how is the distribution of recency across our customers using Kibana's **vertical bar** visualization as below.
 
-![Image for post](recency_histogram.png)
+![Image for post](./src-2/recency_histogram.png)
 
 For clustering part, we will switch to pandas. First we need to load our index into environment:
 ```python
