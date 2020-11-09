@@ -15,8 +15,6 @@ But first off, why we do segmentation?
 
 Because you can’t treat every customer the same way with the same content, same channel, same importance. They will find another option which understands them better.
 
-![Image for post](https://miro.medium.com/max/480/1*2dmE2LMwvIq4h1MhtKzcOQ.gif)
-
 Customers who use your platform have different needs and they have their own different profile. Your should adapt your actions depending on that.
 
 You can do many different segmentations according to what you are trying to achieve. If you want to increase retention rate, you can do a segmentation based on churn probability and take actions. But there are very common and useful segmentation methods as well. Now we are going to implement one of them to our business:  **RFM.**
@@ -33,7 +31,7 @@ As the methodology, we need to calculate  _Recency, Frequency and Monetary Value
 
 To calculate recency, we need to find out most recent purchase date of each customer and see how many days they are inactive for. After having no. of inactive days for each customer, we will apply K-means* clustering to assign customers a  _recency score_.
 
-For this example, we will continue using same dataset which can be found  [here](https://www.kaggle.com/vijayuv/onlineretail). Before jumping into recency calculation, let’s recap the data work we’ve done before.
+For this example, we will continue using same dataset which can be found  [here](https://github.com/synapticielfactory/eland_es_analytics/blob/master/invoices.7z). Before jumping into recency calculation, let’s recap the data work we’ve done before.
 
 Now we can calculate recency:
 
