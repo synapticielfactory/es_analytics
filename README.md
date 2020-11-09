@@ -8,7 +8,7 @@ This series of articles was designed to explain how to use [Eland]() and [Elasti
 I will cover all the topics in the following 9 articles :
 
 1. Know Your Metrics
-2. Customer Segmentation
+2. [Customer Segmentation](Readme-2.md)
 3. Customer Lifetime Value Prediction
 4. Churn Prediction
 5. Predicting Next Purchase Day
