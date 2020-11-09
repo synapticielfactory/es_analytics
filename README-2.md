@@ -9,7 +9,7 @@ This series of articles was designed to explain how to use Kibana with the help 
 
 # Part 2: Customer Segmentation
 
-In the  [previous article](https://github.com/SNouinou/es_analytics), we have analyzed the major metrics for our online retail business. Now we know what and how to track by using Kibana. It’s time to focus on customers and segment them.
+In the  [previous article](README.md), we have analyzed the major metrics for our online retail business. Now we know what and how to track by using Kibana. It’s time to focus on customers and segment them.
 
 But first off, why we do segmentation?
 
