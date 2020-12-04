@@ -9,7 +9,7 @@ I will cover all the topics in the following 9 articles :
 
 1. Know Your Metrics
 2. [Customer Segmentation](README-2.md)
-3. Customer Lifetime Value Prediction
+3. [Customer Lifetime Value Prediction](README-3.md)
 4. Churn Prediction
 5. Predicting Next Purchase Day
 6. Predicting Sales
