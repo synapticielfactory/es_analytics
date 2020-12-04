@@ -31,7 +31,7 @@ We have created our RFM scoring and now our feature set looks like below:
 
 ![Image for post](./src-3/rfm_scoring.png)
 
-I won’t go over the details of RFM scoring as I would be repeating Part 2.
+I won’t go over the details of RFM scoring as I would be repeating Part 2. you can find all requests in [this link](./src-3/rfm_ltv_requests.txt).
 
 Since our feature set is ready, let’s calculate 6 months LTV for each customer which we are going to use for training our model.
 
@@ -50,6 +50,8 @@ Ok, next step. We will merge our 3 months and 6 months dataframes to see correla
 The code below merges our feature set and LTV data and plots LTV vs overall RFM score:
 
 ![Image for post](./src-3/ltv&rfm_correlation.png)
+
+you can find the vega script at the following [link](./src-3/correlation_vega_visualisation.txt).
 
 Positive correlation is quite visible here. High RFM score means high LTV.
 
@@ -76,7 +78,7 @@ There are few more step before training the machine learning model:
 -   We will split our feature set and label (LTV) as X and y. We use X to predict y.
 -   Will create Training and Test dataset. Training set will be used for building the machine learning model. We will apply our model to Test set to see its real performance.
 
-****The code below does it all for us:**
+The code below does it all for us:
 
 ```json
 PUT /_ingest/pipeline/ltv_segmentation
