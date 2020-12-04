@@ -1,0 +1,303 @@
+{
+  $schema: https://vega.github.io/schema/vega/v4.json
+  description: A scatter plot of film statistics, with null values visualized along the axes.
+  width: 800
+  height: 400
+  padding: 5
+  autosize: {
+    type: fit-y
+    resize: true
+  }
+  signals: [
+    {
+      name: yField
+      value: recency
+      bind: {
+        input: select
+        options: [
+          ltv
+          recency
+          count_orders
+          total_revenue
+        ]
+      }
+    }
+    {
+      name: xField
+      value: count_orders
+      bind: {
+        input: select
+        options: [
+          OverallScore
+          total_revenue
+          count_orders
+          recency
+        ]
+      }
+    }
+    {
+      name: nullSize
+      value: 8
+    }
+    {
+      name: nullGap
+      update: nullSize + 10
+    }
+  ]
+  data: [
+    {
+      name: clusters
+      url: {
+        index: es-customers-training-clusters
+        body: {
+          size: 10000
+        }
+      }
+      format: {
+        property: hits.hits
+      }
+    }
+    {
+      name: test
+      url: {
+        index: es-customers-testing
+        body: {
+          size: 10000
+        }
+      }
+      format: {
+        property: hits.hits
+      }
+    }
+    {
+      name: rfm
+      source: clusters
+      transform: [
+        {
+          type: lookup
+          from: test
+          key: _source.customer_id
+          fields: [
+            _source.customer_id
+          ]
+          as: [
+            test
+          ]
+          default: {_source: {total_revenue: "0"}}
+        }
+        {
+          type: project
+          fields: [
+            _source.recency
+            _source.count_orders
+            _source.total_revenue
+            _source.OverallScore
+            test._source.total_revenue
+          ]
+          as: [
+            recency
+            count_orders
+            total_revenue
+            OverallScore
+            ltv
+          ]
+        }
+        {
+          type: filter
+          expr: datum.ltv > 0
+        }
+      ]
+    }
+    {
+      name: score
+      source: rfm
+      transform: [
+        {
+          type: formula
+          expr: datum.OverallScore > 5 ? 3 : datum.OverallScore > 2 ? 2 : 1
+          as: type
+        }
+      ]
+    }
+    {
+      name: valid
+      source: score
+      transform: [
+        {
+          type: filter
+          expr: datum[xField] != null && datum[yField] != null
+        }
+      ]
+    }
+    {
+      name: clusters_labels
+      values: [
+        {
+          id: 1
+          name: Low value
+        }
+        {
+          id: 2
+          name: Medium value
+        }
+        {
+          id: 3
+          name: High value
+        }
+      ]
+    }
+  ]
+  scales: [
+    {
+      name: yscale
+      type: linear
+      range: [
+        {
+          signal: height - nullGap
+        }
+        0
+      ]
+      nice: true
+      domain: {
+        data: valid
+        field: {
+          signal: yField
+        }
+      }
+    }
+    {
+      name: xscale
+      type: linear
+      range: [
+        {
+          signal: nullGap
+        }
+        {
+          signal: width
+        }
+      ]
+      nice: true
+      domain: {
+        data: valid
+        field: {
+          signal: xField
+        }
+      }
+    }
+    {
+      name: label
+      type: ordinal
+      domain: {
+        data: clusters_labels
+        field: id
+      }
+      range: {
+        data: clusters_labels
+        field: name
+      }
+    }
+    {
+      name: color
+      type: ordinal
+      domain: {
+        data: score
+        field: type
+      }
+      range: category
+    }
+  ]
+  axes: [
+    {
+      orient: bottom
+      scale: xscale
+      offset: 5
+      format: s
+      title: {
+        signal: xField
+      }
+    }
+    {
+      orient: left
+      scale: yscale
+      offset: 5
+      format: s
+      title: {
+        signal: yField
+      }
+    }
+  ]
+  legends: [
+    {
+      fill: color
+      title: Cluster
+      orient: right
+      encode: {
+        symbols: {
+          enter: {
+            fillOpacity: {
+              value: 0.5
+            }
+          }
+        }
+        labels: {
+          update: {
+            text: {
+              scale: label
+              field: value
+            }
+          }
+        }
+      }
+    }
+  ]
+  marks: [
+    {
+      type: symbol
+      from: {
+        data: valid
+      }
+      encode: {
+        enter: {
+          size: {
+            value: 50
+          }
+        }
+        update: {
+          x: {
+            scale: xscale
+            field: {
+              signal: xField
+            }
+          }
+          y: {
+            scale: yscale
+            field: {
+              signal: yField
+            }
+          }
+          fill: {
+            scale: color
+            field: type
+          }
+          fillOpacity: {
+            value: 0.5
+          }
+          zindex: {
+            value: 0
+          }
+        }
+        hover: {
+          fill: {
+            value: firebrick
+          }
+          fillOpacity: {
+            value: 1
+          }
+          zindex: {
+            value: 1
+          }
+        }
+      }
+    }
+  ]
+}
