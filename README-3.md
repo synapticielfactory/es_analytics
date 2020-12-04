@@ -188,11 +188,11 @@ POST ml-customers-output/_search?size=0
 ```
 ![Image for post](./src-3/model_accuracy.png)
 
-Accuracy shows 98% on the test set. Looks really good. Or does it?
+Accuracy shows 98.8% on the test set. Looks really good. Or does it?
 
 First we need to check our benchmark. Biggest cluster we have is cluster 0 which is 98.3% of the total base. If we blindly say, every customer belongs to cluster 0, then our accuracy would be 98.3%.
 
-84% vs 76.5% tell us that our machine learning model is a useful one but needs some improvement for sure. We should find out where the model is failing.
+98.8% vs 98.3% tell us that our machine learning model is a useful one but needs some improvement for sure. We should find out where the model is failing.
 
 We can identify that by looking at classification report:
 
