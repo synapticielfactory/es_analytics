@@ -1,0 +1,348 @@
+GET es-invoices/_search
+{
+  
+}
+POST _reindex
+{
+  "source": {
+    "index": "es-invoices",
+    "query": {
+      "range": {
+        "invoice_date": {
+          "gte": "2020-01-01||-9M/d",
+          "lt": "2020-01-01||-6M/d"
+        }
+      }
+    }
+  },
+  "dest": {
+    "index": "es-invoices-3m"
+  }
+}
+
+POST _reindex/?wait_for_completion=false
+{
+  "source": {
+    "index": "es-invoices",
+    "query": {
+      "range": {
+        "invoice_date": {
+          "gte": "2020-01-01||-6M/d",
+          "lt": "2020-01-01||/d"
+        }
+      }
+    }
+  },
+  "dest": {
+    "index": "es-invoices-6m"
+  }
+}
+
+GET /_tasks/ZKcIrtn6Tta3QTqwl1bcpg:1696047
+
+PUT _transform/es-customers-6m
+{
+  "id": "es-customers-6m",
+  "source": {
+    "index": [
+      "es-invoices"
+    ],
+    "query": {
+      "range": {
+        "invoice_date": {
+          "gte": "2020-01-01||-6M/d",
+          "lt": "2020-01-01||/d"
+        }
+      }
+    }
+  },
+  "dest": {
+    "index": "es-customers-6m"
+  },
+  "pivot": {
+    "group_by": {
+      "customer_id": {
+        "terms": {
+          "field": "customer_id"
+        }
+      }
+    },
+    "aggregations": {
+      "avg_revenue": {
+        "avg": {
+          "field": "revenue"
+        }
+      },
+      "total_revenue": {
+        "sum": {
+          "field": "revenue"
+        }
+      },
+      "first_invoice": {
+        "min": {
+          "field": "invoice_date"
+        }
+      },
+      "last_invoice": {
+        "max": {
+          "field": "invoice_date"
+        }
+      },
+      "count_orders": {
+        "value_count": {
+          "field": "invoice_id"
+        }
+      },
+      "quantity": {
+        "sum": {
+          "field": "order_qty"
+        }
+      }
+    }
+  }
+}
+
+POST _transform/es-customers-6m/_start
+
+PUT _transform/es-customers-3m
+{
+  "id": "es-customers-3m",
+  "source": {
+    "index": [
+      "es-invoices"
+    ],
+    "query": {
+      "range": {
+        "invoice_date": {
+          "gte": "2020-01-01||-9M/d",
+          "lt": "2020-01-01||-6M/d"
+        }
+      }
+    }
+  },
+  "dest": {
+    "index": "es-customers-3m"
+  },
+  "pivot": {
+    "group_by": {
+      "customer_id": {
+        "terms": {
+          "field": "customer_id"
+        }
+      }
+    },
+    "aggregations": {
+      "avg_revenue": {
+        "avg": {
+          "field": "revenue"
+        }
+      },
+      "total_revenue": {
+        "sum": {
+          "field": "revenue"
+        }
+      },
+      "first_invoice": {
+        "min": {
+          "field": "invoice_date"
+        }
+      },
+      "last_invoice": {
+        "max": {
+          "field": "invoice_date"
+        }
+      },
+      "count_orders": {
+        "value_count": {
+          "field": "invoice_id"
+        }
+      },
+      "quantity": {
+        "sum": {
+          "field": "order_qty"
+        }
+      }
+    }
+  }
+}
+POST _transform/es-customers-3m/_start
+
+PUT _transform/es-customers-3m-statistics
+{
+  "id": "es-customers-3m-statistics",
+  "source": {
+    "index": [
+      "es-customers-3m"
+    ],
+    "query": {
+      "range": {
+        "last_invoice": {
+          "gte": "now-800d/d",
+          "lt": "now/d"
+        }
+      }
+    }
+  },
+  "dest": {
+    "index": "es-customers-3m-statistics"
+  },
+  "pivot": {
+    "group_by": {
+      "date": {
+        "date_histogram": {
+          "field": "last_invoice",
+          "fixed_interval": "365d"
+        }
+      }
+    },
+    "aggregations": {
+      "latest_invoice": {
+        "max": {
+          "field": "last_invoice"
+        }
+      }
+    }
+  }
+}
+
+POST _transform/es-customers-3m-statistics/_start
+
+PUT /_enrich/policy/customers_training_latest_invoice
+{
+  "match": {
+    "indices": "es-customers-3m-statistics",
+    "match_field": "date",
+    "enrich_fields": [
+      "latest_invoice"
+    ]
+  }
+}
+
+POST /_enrich/policy/customers_training_latest_invoice/_execute
+
+PUT /_ingest/pipeline/customer_lookup_3m
+{
+  "description": "",
+  "processors": [
+    {
+      "script": {
+        "lang": "painless",
+        "source": "ZonedDateTime zdt = ZonedDateTime.parse(ctx.last_invoice); ctx.date = (long) Math.floor(zdt.toInstant().toEpochMilli() / params.interval) * params.interval",
+        "params": {
+          "interval": 31536000000
+        }
+      }
+    },
+    {
+      "enrich": {
+        "policy_name": "customers_training_latest_invoice",
+        "field": "date",
+        "target_field": "enrich",
+        "max_matches": 1
+      }
+    },
+    {
+      "rename": {
+        "field": "enrich.latest_invoice",
+        "target_field": "latest_invoice",
+        "ignore_failure": true
+      }
+    },
+    {
+      "remove": {
+        "field": "enrich",
+        "ignore_failure": true
+      }
+    },
+    {
+      "script": {
+        "lang": "painless",
+        "source": "if(ctx.latest_invoice == null) { ctx.recency = -1; } else { ctx.recency = (ZonedDateTime.parse(ctx.latest_invoice).toInstant().toEpochMilli() - ZonedDateTime.parse(ctx.last_invoice).toInstant().toEpochMilli())/ 24 / 3600 / 1000; }"
+      }
+    },
+    {
+      "script": {
+        "lang": "painless",
+        "source": "double mean(def arr) { double total = 0; for(int i=0; i<arr.length; i++){ total = total + arr[i]; } total / arr.length; } if(ctx.recency != null ) {ctx.score = mean(new double[] {ctx.recency, ctx.count_orders, ctx.total_revenue});}"
+      }
+    }
+  ]
+}
+
+POST es-customers-3m/_update_by_query?pipeline=customer_lookup_3m
+{
+  "query": {
+    "match_all": {}
+  }
+}
+
+GET ml-customers/_search
+{
+  
+}
+
+PUT /_ingest/pipeline/ltv_segmentation
+{
+  "description": "",
+  "processors": [
+    {
+      "script": {
+        "lang": "painless",
+        "source": "if (ctx.OverallScore>1) { ctx.segment_high=1; ctx.segment_low=0; ctx.segment_medium=0} else if(ctx.OverallScore<1) { ctx.segment_low=1; ctx.segment_high=0; ctx.segment_medium=0} else { ctx.segment_medium=1; ctx.segment_high=0; ctx.segment_low=0;}"
+      }
+    }
+  ]
+}
+
+POST ml-customers/_update_by_query?pipeline=ltv_segmentation
+{
+  "query": {
+    "match_all": {}
+  }
+}
+
+GET ml-customers/_search
+{
+  
+}
+
+GET ml-customers/_search
+{
+  "aggs": {
+    "statistics": {
+      "matrix_stats": {
+        "fields": [ "LTVCluster", "recency", "OverallScore", "count_orders_x", "total_revenue_x", "segment_low", "segment_medium", "segment_high"]
+      }
+    }
+  }
+}
+
+POST ml-customers-output/_search?size=0
+{
+  "query": {
+    "match_all": {}
+  },
+  "aggs": {
+    "training_accuracy": {
+      "scripted_metric": {
+        "init_script": "state.samples = []", 
+        "map_script": "if(doc['ml.is_training'].value == true){state.samples.add(doc['ml.LTVCluster_prediction'].value == doc.LTVCluster.value ? 1 : 0)}",
+        "combine_script": "double correct = 0; double total = 0; for (t in state.samples) { total++; correct += t } return correct/total",
+        "reduce_script": "double accuracy = 0; for (a in states) { accuracy += a } return accuracy"
+      }
+    },
+        "test_accuracy": {
+      "scripted_metric": {
+        "init_script": "state.samples = []", 
+        "map_script": "if(doc['ml.is_training'].value == false){state.samples.add(doc['ml.LTVCluster_prediction'].value == doc.LTVCluster.value ? 1 : 0)}",
+        "combine_script": "double correct = 0; double total = 0; for (t in state.samples) { total++; correct += t } return correct/total",
+        "reduce_script": "double accuracy = 0; for (a in states) { accuracy += a } return accuracy"
+      }
+    }
+  }
+}
+
+
+
+
+
