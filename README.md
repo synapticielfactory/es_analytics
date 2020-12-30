@@ -10,12 +10,12 @@ I will cover all the topics in the following 9 articles :
 1. Know Your Metrics
 2. [Customer Segmentation](README-2.md)
 3. [Customer Lifetime Value Prediction](README-3.md)
-4. Churn Prediction
-5. Predicting Next Purchase Day
-6. Predicting Sales
-7. Market Response Models
-8. Uplift Modeling
-9. A/B Testing Design and Execution
+4. [Churn Prediction](README-4.md)
+5. [Predicting Next Purchase Day](README-5.md)
+6. [Predicting Sales](README-6.md)
+7. [Market Response Models](README-7.md)
+8. [Uplift Modeling](README-8.md)
+9. [A/B Testing Design and Execution](README-9.md)
 
 Articles will have their own code snippets to make you easily apply them. If you are super new to programming, you can have a good introduction for Eland and Pandas [here](https://github.com/synapticielfactory/eland_es_analytics).
 

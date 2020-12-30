@@ -1,0 +1,196 @@
+PUT /_ingest/pipeline/churn_labeling
+{
+  "description": "",
+  "processors": [
+    {
+      "script": {
+        "lang": "painless",
+        "source": "ctx.churn_flag = ctx.Churn==\"Yes\" ? 1 : 0"
+      }
+    }
+  ]
+}
+
+POST es-churn/_update_by_query?pipeline=churn_labeling
+{
+  "query": {
+    "match_all": {}
+  }
+}
+
+GET es-churn/_mapping
+{
+}
+
+GET es-churn/_search
+{
+  "query": {
+    "bool": {
+      "must_not": {
+        "exists": {
+          "field": "TotalCharges"
+        }
+      }
+    }
+  }
+}
+
+POST es-churn-output/_search
+{
+  "query": {
+    "match_all": {}
+  }
+}
+
+POST es-churn-output/_search?size=0
+{
+  "query": {
+    "match_all": {}
+  },
+  "aggs": {
+    "training_accuracy": {
+      "scripted_metric": {
+        "init_script": "state.samples = []", 
+        "map_script": "if(doc['ml.is_training'].value == true){state.samples.add(doc['ml.Churn_prediction'].value == doc.Churn.value ? 1 : 0)}",
+        "combine_script": "double correct = 0; double total = 0; for (t in state.samples) { total++; correct += t } return correct/total",
+        "reduce_script": "double accuracy = 0; for (a in states) { accuracy += a } return accuracy"
+      }
+    },
+    "test_accuracy": {
+      "scripted_metric": {
+        "init_script": "state.samples = []", 
+        "map_script": "if(doc['ml.is_training'].value == false){state.samples.add(doc['ml.Churn_prediction'].value == doc.Churn.value ? 1 : 0)}",
+        "combine_script": "double correct = 0; double total = 0; for (t in state.samples) { total++; correct += t } return correct/total",
+        "reduce_script": "double accuracy = 0; for (a in states) { accuracy += a } return accuracy"
+      }
+    }
+  }
+}
+
+
+POST es-churn-output/_search?size=0
+{
+  "query": {
+    "match": {
+      "ml.is_training": true
+    }
+  },
+  "aggs": {
+        "precision_0": {
+      "scripted_metric": {
+        "init_script": "state.samples = []", 
+        "map_script": "if(doc['ml.Churn_prediction'].value == doc.Churn.value){state.samples.add( doc.Churn.value == 0 ? 1 : 0)}",
+        "combine_script": "double correct = 0; double total = 0; for (t in state.samples) { total++; correct += t } return correct/total",
+        "reduce_script": "double accuracy = 0; for (a in states) { accuracy += a } return accuracy"
+      }
+    },
+    "precision_1": {
+      "scripted_metric": {
+        "init_script": "state.samples = []", 
+        "map_script": "if(doc['ml.Churn_prediction'].value == doc.Churn.value){state.samples.add( doc.Churn.value == 1 ? 1 : 0)}",
+        "combine_script": "double correct = 0; double total = 0; for (t in state.samples) { total++; correct += t } return correct/total",
+        "reduce_script": "double accuracy = 0; for (a in states) { accuracy += a } return accuracy"
+      }
+    },
+    "recall_0": {
+      "scripted_metric": {
+        "init_script": "state.samples = []", 
+        "map_script": "if(doc.Churn.value == 0){state.samples.add(  doc['ml.Churn_prediction'].value == doc.Churn.value ? 1 : 0)}",
+        "combine_script": "double correct = 0; double total = 0; for (t in state.samples) { total++; correct += t } return correct/total",
+        "reduce_script": "double accuracy = 0; for (a in states) { accuracy += a } return accuracy"
+      }
+    },
+    "recall_1": {
+      "scripted_metric": {
+        "init_script": "state.samples = []", 
+        "map_script": "if(doc.Churn.value == 1){state.samples.add(  doc['ml.Churn_prediction'].value == doc.Churn.value ? 1 : 0)}",
+        "combine_script": "double correct = 0; double total = 0; for (t in state.samples) { total++; correct += t } return correct/total",
+        "reduce_script": "double accuracy = 0; for (a in states) { accuracy += a } return accuracy"
+      }
+    }
+  }
+}
+
+DELETE _ml/data_frame/analytics/churn_job
+
+PUT _ml/data_frame/analytics/churn_job
+{
+  "description": "",
+  "source": {
+    "index": "es-churn"
+  },
+  "dest": {
+    "index": "es-churn-output"
+  },
+  "analyzed_fields": {
+    "excludes": [
+      "customerID",
+      "churn_flag"
+    ]
+  },
+  "analysis": {
+    "classification": {
+      "dependent_variable": "Churn",
+      "num_top_feature_importance_values": 10000,
+      "training_percent": 95
+    }
+  },
+  "model_memory_limit": "89mb"
+}
+
+POST _ml/data_frame/analytics/churn_job/_start
+
+PUT _ml/data_frame/analytics/churn_analysis_sofisticated
+{
+  "description": "",
+  "source": {
+    "index": "es-churn"
+  },
+  "dest": {
+    "index": "ml-churn-output-s"
+  },
+  "analyzed_fields": {
+    "excludes": [
+      "customerID",
+      "churn_flag"
+    ]
+  },
+  "analysis": {
+    "classification": {
+      "dependent_variable": "Churn",
+      "num_top_feature_importance_values": 10000,
+      "training_percent": 95,
+      "feature_processors": [
+        {
+          "one_hot_encoding":  {
+            "field":  "gender",
+            "hot_map":  {
+              "Male":  "gender_Male",
+              "Female":  "gender_Female"
+             }
+          }
+        },
+        {
+          "one_hot_encoding":  {
+            "field":  "DeviceProtection",
+            "hot_map":  {
+              "Yes":  "DeviceProtection_Yes",
+              "No":  "DeviceProtection_No"
+             }
+          }
+        }
+      ]
+    }
+  },
+  "model_memory_limit": "89mb"
+}
+
+
+POST es-churn-output/_search
+{
+  "query": {
+    "match_all": {}
+  },
+  "fields": ["customerID", "ml.prediction_probability"],
+  "_source": false
+}
