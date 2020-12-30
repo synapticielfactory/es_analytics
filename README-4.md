@@ -233,6 +233,44 @@ As you can see easily,  **gender** &  **Partner** columns became numerical ones,
 
 It is time to fit a logistic regression model and extract insights to make better business decisions.
 
+
+## Logistic Regression
+
+Predicting churn is a binary classification problem.  Customers either churn or retain in a given period. Along with being a robust model, Logistic Regression provides interpretable outcomes too. As we did before, let’s sort out our steps to follow for building a Logistic Regression model:
+
+1.  Prepare the data (inputs for the model)
+2.  Fit the model and see the model summary
+
+And the summary looks like below:
+
+![Image for post](![Image for post](/./src-4/capture-27.png))
+
+We have two important outcomes from this report. When you prepare a Churn Prediction model, you will face with the questions below:
+
+1- Which characteristics make customers churn or retain?
+
+2- What are the most critical ones? What should we focus on?
+
+For the first question, you should look at the 4th column (P>|z|). If the absolute  **p-value** is smaller than 0.05, it means, that feature affects Churn in a statistically significant way. Examples are:
+
+-   SeniorCitizen
+-   InternetService_DSL
+-   OnlineSecurity_NO
+
+Then the second question. We want to reduce the Churn Rate, where we should start? The scientific version of this question is;
+
+> Which feature will bring the best ROI if I increase/decrease it by one unit?
+
+That question can be answered by looking at the  **coef**  column. Exponential  **coef** gives us the expected change in Churn Rate if we change it by one unit. If we apply the code below, we will see the transformed version of all coefficients:
+
+np.exp(res.params)
+
+![Image for post](/./src-4/capture-28.png)
+
+As an example, one unit change in Monthly Charge means ~3.4% improvement in the odds for churning if we keep everything else constant. From the table above, we can quickly identify which features are more important.
+
+Now, everything is ready for building our classification model.
+
 ## Binary Classification Model with Data frame analytics in ElasticSearch
 
 To fit Data frame analytics to our data, we should prepare features (X) and label(y) sets and do the train & test split.
