@@ -210,7 +210,7 @@ _Total Charge:_
 - TenureCluster_High
 
 Let’s see both in practice:
-
+```python
 #import Label Encoder  
 from sklearn.preprocessing import LabelEncoder  
 le = LabelEncoder()  
@@ -222,6 +222,7 @@ dummy_columns = [] #array for multiple value columnsfor column in df_data.column
         else:  
             dummy_columns.append(column)#apply get dummies for selected columns  
 df_data = pd.get_dummies(data = df_data,columns = dummy_columns)
+```
 
 Check out how the data looks like for the selected columns:
 
