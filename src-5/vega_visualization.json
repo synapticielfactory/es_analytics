@@ -1,0 +1,197 @@
+{
+  "$schema": "https://vega.github.io/schema/vega/v4.json",
+  "description": "Correlation matrix.",
+  "padding": 5,
+  "title": {
+    "text": "Correlation matrix",
+    "anchor": "middle",
+    "fontSize": 16,
+    "frame": "group",
+    "offset": 4
+  },
+  "signals": [
+    {"name": "palette", "value": "DarkRed"},
+    {"name": "reverse", "value": false}
+  ],
+  "data": [
+    {
+      "name": "correlation",
+      "url": {
+        "index": "es-users",
+        "body": {
+          "size": 0,
+          "aggregations": {
+            "statistics": {
+              "matrix_stats": {
+                "fields": [
+                  "next_purchase_day",
+                  "recency",
+                  "count_orders",
+                  "total_revenue",
+                  "recency_cluster",
+                  "frequency_cluster",
+                  "revenue_cluster",
+                  "overall_score",
+                  "day_diff",
+                  "day_diff_2",
+                  "day_diff_3",
+                  "day_diff_mean",
+                  "day_diff_std"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "format": {"property": "aggregations.statistics.fields"}
+    },
+    {
+      "name": "stats",
+      "source": "correlation",
+      "transform": [
+        {
+          "type": "project",
+          "fields": [
+            "name",
+            "correlation.next_purchase_day",
+            "correlation.recency",
+            "correlation.count_orders",
+            "correlation.total_revenue",
+            "correlation.recency_cluster",
+            "correlation.frequency_cluster",
+            "correlation.revenue_cluster",
+            "correlation.overall_score",
+            "correlation.day_diff",
+            "correlation.day_diff_2",
+            "correlation.day_diff_3",
+            "correlation.day_diff_mean",
+            "correlation.day_diff_std"
+          ],
+          "as": [
+            "name",
+            "next_purchase_day",
+            "recency",
+            "count_orders",
+            "total_revenue",
+            "recency_cluster",
+            "frequency_cluster",
+            "revenue_cluster",
+            "overall_score",
+            "day_diff",
+            "day_diff_2",
+            "day_diff_3",
+            "day_diff_mean",
+            "day_diff_std"
+          ]
+        },
+        {
+          "type": "fold",
+          "fields": [
+            "next_purchase_day",
+            "recency",
+            "count_orders",
+            "total_revenue",
+            "recency_cluster",
+            "frequency_cluster",
+            "revenue_cluster",
+            "overall_score",
+            "day_diff",
+            "day_diff_2",
+            "day_diff_3",
+            "day_diff_mean",
+            "day_diff_std"
+          ]
+        }
+      ]
+    }
+  ],
+  "scales": [
+    {
+      "name": "x",
+      "type": "band",
+            "domain": [
+            "next_purchase_day",
+            "recency",
+            "count_orders",
+            "total_revenue",
+            "recency_cluster",
+            "frequency_cluster",
+            "revenue_cluster",
+            "overall_score",
+            "day_diff",
+            "day_diff_2",
+            "day_diff_3",
+            "day_diff_mean",
+            "day_diff_std"
+      ],
+      "range": "width"
+    },
+    {
+      "name": "y",
+      "type": "band",
+                  "domain": [
+            "next_purchase_day",
+            "recency",
+            "count_orders",
+            "total_revenue",
+            "recency_cluster",
+            "frequency_cluster",
+            "revenue_cluster",
+            "overall_score",
+            "day_diff",
+            "day_diff_2",
+            "day_diff_3",
+            "day_diff_mean",
+            "day_diff_std"
+      ],
+      "range": "height"
+    },
+    {
+      "name": "color",
+      "type": "linear",
+      "range": {"scheme": {"signal": "palette"}},
+      "domain": {"data": "stats", "field": "value"},
+      "zero": false,
+      "nice": true
+    }
+  ],
+  "axes": [
+    {
+      "orient": "bottom",
+      "scale": "x",
+      "domain": false,
+      "encode": {"labels": {"update": {"text": {"signal": "datum.value"}}}}
+    },
+    {
+      "orient": "left",
+      "scale": "y",
+      "domain": false,
+      "encode": {"labels": {"update": {"text": {"signal": "datum.value"}}}}
+    }
+  ],
+  "legends": [
+    {
+      "fill": "color",
+      "type": "gradient",
+      "title": "Correlation",
+      "titleFontSize": 12,
+      "titlePadding": 4,
+      "gradientLength": {"signal": "height - 16"}
+    }
+  ],
+  "marks": [
+    {
+      "type": "rect",
+      "from": {"data": "stats"},
+      "encode": {
+        "enter": {
+          "x": {"scale": "x", "field": "name"},
+          "y": {"scale": "y", "field": "key"},
+          "width": {"scale": "x", "band": 1},
+          "height": {"scale": "y", "band": 1}
+        },
+        "update": {"fill": {"scale": "color", "field": "value"}}
+      }
+    }
+  ]
+}

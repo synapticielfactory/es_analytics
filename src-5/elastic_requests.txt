@@ -1,0 +1,522 @@
+POST es-invoices/_update_by_query?refresh=false&wait_for_completion=false
+{
+  "script": {
+    "source": "ctx._source['revenue'] = ctx._source['unit_price'] * ctx._source['order_qty']"
+  }
+}
+
+GET es-invoices-3m/_search
+{
+  "aggs": {
+    "customer": {
+      "terms": {
+        "field": "customer_id",
+        "size": 10
+      },
+      "aggs": {
+        "max_purchase_date": {
+          "max": {
+            "field": "invoice_date"
+          }
+        },
+        "min_purchase_date": {
+          "min": {
+            "field": "invoice_date"
+          }
+        }
+      }
+    }
+  }
+}
+DELETE es-invoices-3m
+PUT /es-invoices-6m
+{
+  "settings": {
+    "number_of_shards": 1
+  },
+  "mappings": {
+    "properties": {
+      "invoice_id": {
+        "type": "keyword"
+      },
+      "item_id": {
+        "type": "keyword"
+      },
+      "item_model": {
+        "type": "keyword"
+      },
+      "item_name": {
+        "type": "keyword"
+      },
+      "item_brand": {
+        "type": "keyword"
+      },
+      "item_vendor": {
+        "type": "keyword"
+      },
+      "order_qty": {
+        "type": "integer"
+      },
+      "invoice_date": {
+        "type": "date"
+      },
+      "unit_price": {
+        "type": "float"
+      },
+      "customer_id": {
+        "type": "keyword"
+      },
+      "country_name": {
+        "type": "keyword"
+      },
+      "country_location": {
+        "type": "geo_point"
+      }
+    }
+  }
+}
+
+
+POST _reindex/?wait_for_completion=false
+{
+  "source": {
+    "index": "es-invoices",
+    "query": {
+      "range": {
+        "invoice_date": {
+          "gte": "2019-06-01||-6M/d",
+          "lt": "2019-06-01"
+        }
+      }
+    }
+  },
+  "dest": {
+    "index": "es-invoices-6m"
+  }
+}
+
+PUT /es-invoices-3m
+{
+  "settings": {
+    "number_of_shards": 1
+  },
+  "mappings": {
+    "properties": {
+      "invoice_id": {
+        "type": "keyword"
+      },
+      "item_id": {
+        "type": "keyword"
+      },
+      "item_model": {
+        "type": "keyword"
+      },
+      "item_name": {
+        "type": "keyword"
+      },
+      "item_brand": {
+        "type": "keyword"
+      },
+      "item_vendor": {
+        "type": "keyword"
+      },
+      "order_qty": {
+        "type": "integer"
+      },
+      "invoice_date": {
+        "type": "date"
+      },
+      "unit_price": {
+        "type": "float"
+      },
+      "customer_id": {
+        "type": "keyword"
+      },
+      "country_name": {
+        "type": "keyword"
+      },
+      "country_location": {
+        "type": "geo_point"
+      }
+    }
+  }
+}
+POST _reindex/?wait_for_completion=false
+{
+  "source": {
+    "index": "es-invoices",
+    "query": {
+      "range": {
+        "invoice_date": {
+          "gte": "2019-06-01",
+          "lt": "2019-06-01||+3M/d"
+        }
+      }
+    }
+  },
+  "dest": {
+    "index": "es-invoices-3m"
+  }
+}
+
+GET _tasks/cglnzHN3TP2jjkWEacNYrA:99575
+
+GET es-customers-6m/_search
+DELETE es-customers-6m
+POST _transform/es-customers-6m/_start
+PUT _transform/es-customers-6m
+{
+  "id": "es-customers-6m",
+  "source": {
+    "index": [
+      "es-invoices-6m"
+    ]
+  },
+  "dest": {
+    "index": "es-customers-6m"
+  },
+  "pivot": {
+    "group_by": {
+      "customer_id": {
+        "terms": {
+          "field": "customer_id"
+        }
+      }
+    },
+    "aggregations": {
+      "max_purchase_date":{
+        "max":{
+          "field": "invoice_date"
+        }
+      },
+      "avg_revenue": {
+        "avg": {
+          "field": "revenue"
+        }
+      },
+      "total_revenue": {
+        "sum": {
+          "field": "revenue"
+        }
+      },
+      "first_invoice": {
+        "min": {
+          "field": "invoice_date"
+        }
+      },
+      "last_invoice": {
+        "max": {
+          "field": "invoice_date"
+        }
+      },
+      "count_orders": {
+        "value_count": {
+          "field": "invoice_id"
+        }
+      },
+      "quantity": {
+        "sum": {
+          "field": "order_qty"
+        }
+      }
+    }
+  }
+}
+
+GET es-customers-3m/_search
+POST _transform/es-customers-3m/_start
+DELETE _transform/es-customers-3m
+PUT _transform/es-customers-3m
+{
+  "id": "es-customers-3m",
+  "source": {
+    "index": [
+      "es-invoices-3m"
+    ]
+  },
+  "dest": {
+    "index": "es-customers-3m"
+  },
+  "pivot": {
+    "group_by": {
+      "customer_id": {
+        "terms": {
+          "field": "customer_id"
+        }
+      }
+    },
+    "aggregations": {
+      "min_purchase_date":{
+        "min":{
+          "field": "invoice_date"
+        }
+      },
+      "avg_revenue": {
+        "avg": {
+          "field": "revenue"
+        }
+      },
+      "total_revenue": {
+        "sum": {
+          "field": "revenue"
+        }
+      },
+      "first_invoice": {
+        "min": {
+          "field": "invoice_date"
+        }
+      },
+      "last_invoice": {
+        "max": {
+          "field": "invoice_date"
+        }
+      },
+      "count_orders": {
+        "value_count": {
+          "field": "invoice_id"
+        }
+      },
+      "quantity": {
+        "sum": {
+          "field": "order_qty"
+        }
+      }
+    }
+  }
+}
+
+POST _transform/es-customers-6m/_start
+POST _transform/es-customers-3m/_start
+
+GET es-customers-6m/_search
+GET es-customers-3m/_search
+
+DELETE es-customers-users2
+
+#transform merge : not working the error in capture problem
+
+DELETE es-customers-users
+PUT _transform/es-customers-users
+{
+  "id": "es-customers-users",
+  "source": {
+    "index": [
+      "es-customers-3m",
+      "es-customers-6m"
+    ]
+  },
+  "dest": {
+    "index": "es-customers-users"
+  },
+  "pivot": {
+    "group_by": {
+      "customer_id": {
+        "terms": {
+          "field": "customer_id"
+        }
+      }
+    },
+    "aggregations": {
+      "max_purchase_date": {
+        "max": {
+          "field": "max_purchase_date"
+        }
+      },
+      "min_purchase_date": {
+        "min": {
+          "field": "min_purchase_date"
+        }
+      },
+      "difference":{
+      "bucket_script": {
+        "buckets_path": {
+          "my_var1": "min_purchase_date",
+          "my_var2": "max_purchase_date"
+        },
+        "script": "params.my_var1"
+      }
+    }
+    }
+  }
+}
+
+#reindex merge : not working because it uses same id
+POST _reindex
+{
+  "source": {
+    "index": "es-customers-*"
+  },
+  "dest": {
+    "index": "es-customers-users"
+  }
+}
+
+
+POST _transform/es-customers-users2/_start
+
+PUT _transform/es-customers-users2
+{
+  "id": "es-customers-users2",
+  "source": {
+    "index": [
+      "es-customers-users"
+    ]
+  },
+  "dest": {
+    "index": "es-customers-users2"
+  },
+  "pivot": {
+    "group_by": {
+      "customer_id": {
+        "terms": {
+          "field": "customer_id"
+        }
+      }
+    },
+    "aggregations": {
+      "max_purchase_date": {
+        "max": {
+          "field": "max_purchase_date"
+        }
+      },
+      "min_purchase_date": {
+        "min": {
+          "field": "min_purchase_date"
+        }
+      },
+      "difference":{
+      "bucket_script": {
+        "buckets_path": {
+          "my_var1": "min_purchase_date",
+          "my_var2": "max_purchase_date"
+        },
+        "script": "params.my_var1"
+      }
+    }
+    }
+  }
+}
+######part2
+GET es-statistics-6m/_search
+POST _transform/es-statistics-6m/_start
+DELETE es-statistics-6m
+PUT _transform/es-statistics-6m
+{
+  "id": "es-statistics-6m",
+  "source": {
+    "index": [
+      "es-customers-6m"
+    ]
+  },
+  "dest": {
+    "index": "es-statistics-6m"
+  },
+  "pivot": {
+    "group_by": {
+      "date": {
+        "date_histogram": {
+          "field": "last_invoice",
+          "fixed_interval": "730d"
+        }
+      }
+    },
+    "aggregations": {
+      "latest_invoice": {
+        "max": {
+          "field": "last_invoice"
+        }
+      }
+    }
+  }
+}
+
+PUT /_enrich/policy/customers_latest_invoice
+{
+  "match": {
+    "indices": "es-statistics-6m",
+    "match_field": "date",
+    "enrich_fields": [
+      "latest_invoice"
+    ]
+  }
+}
+POST /_enrich/policy/customers_latest_invoice/_execute
+
+
+PUT /_ingest/pipeline/customer_lookup
+{
+  "description": "",
+  "processors": [
+    {
+      "script": {
+        "lang": "painless",
+        "source": "ZonedDateTime zdt = ZonedDateTime.parse(ctx.last_invoice); ctx.date = (long) Math.floor(zdt.toInstant().toEpochMilli() / params.interval) * params.interval",
+        "params": {
+          "interval": 63072000000 // 365 * 24 * 3600 * 10000
+        }
+      }
+    },
+    {
+      "enrich": {
+        "policy_name": "customers_latest_invoice",
+        "field": "date",
+        "target_field": "enrich",
+        "max_matches": 1
+      }
+    },
+    {
+      "rename": {
+        "field": "enrich.latest_invoice",
+        "target_field": "latest_invoice",
+        "ignore_failure": true
+      }
+    },
+    {
+      "remove": {
+        "field": "enrich",
+        "ignore_failure": true
+      }
+    },
+    {
+      "script": {
+        "lang": "painless",
+        "source": "if(ctx.latest_invoice == null) { ctx.recency = -1; } else { ctx.recency = (ZonedDateTime.parse(ctx.latest_invoice).toInstant().toEpochMilli() - ZonedDateTime.parse(ctx.last_invoice).toInstant().toEpochMilli())/ 24 / 3600 / 1000; }"
+      }
+    },
+    {
+      "script": {
+        "lang": "painless",
+        "source": "double mean(def arr) { double total = 0; for(int i=0; i<arr.length; i++){ total = total + arr[i]; } total / arr.length; } if(ctx.recency != null ) {ctx.score = mean(new double[] {ctx.recency, ctx.count_orders, ctx.total_revenue});}"
+      }
+    }
+  ]
+}
+
+PUT /_enrich/policy/customers_latest_invoice
+{
+  "match": {
+    "indices": "es-statistics-6m",
+    "match_field": "date",
+    "enrich_fields": [
+      "latest_invoice"
+    ]
+  }
+}
+POST /_enrich/policy/customers_latest_invoice/_execute
+
+POST es-customers-3m/_update_by_query?pipeline=customer_lookup
+{
+  "query": {
+    "match_all": {}
+  }
+}
+
+GET es-customers-3m/_search
+
+{
+  "query": {
+    "match": {
+      "date": 1513728000000
+    }
+  }
+}
